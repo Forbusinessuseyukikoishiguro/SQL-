@@ -1,0 +1,166 @@
+# 新人エンジニア向けSQL解説
+
+## 基本的なSQL構文の説明
+
+### 1行目: SELECT文の開始
+```sql
+SELECT 't01_application' , id , receipt_no , application_no , ...
+```
+
+**解説:**
+- `SELECT` - データベースからデータを取得するためのコマンド
+- `'t01_application'` - 文字列リテラル（固定の文字列）。結果に「t01_application」という文字列を含める
+- `,` - カンマで各列（カラム）を区切る
+- `id`, `receipt_no`, `application_no` - テーブルから取得したいカラム名
+
+### 最終行: FROM句とWHERE句
+```sql
+FROM t01_application where created_datetime > '2025-02-20';
+```
+
+**解説:**
+- `FROM t01_application` - どのテーブルからデータを取得するかを指定
+- `WHERE created_datetime > '2025-02-20'` - 条件を指定（2025年2月20日より後に作成されたレコードのみ）
+- `;` - SQL文の終了を示すセミコロン
+
+## 各テーブルの役割と構造
+
+### 1. t01_application（申込テーブル）
+**役割:** 保険申込の基本情報を格納
+
+**主要カラムの説明:**
+- `id` - レコードの一意識別子（主キー）
+- `receipt_no` - 受付番号
+- `application_no` - 申込番号  
+- `status` - 申込状態
+- `main_type_cd` - 主契約種類コード
+- `contractor_birth_date` - 契約者生年月日
+- `contractor_gender` - 契約者性別
+- `total_p` - 合計保険料
+
+### 2. t02_notice（告知テーブル）
+**役割:** 健康状態の告知情報を格納
+
+```sql
+SELECT 't02_notice' , id , application_id , notice_answer_cancer , ...
+FROM t02_notice where created_datetime > '2025-02-20';
+```
+
+**主要カラムの説明:**
+- `application_id` - 申込テーブルとの関連付け（外部キー）
+- `notice_answer_cancer` - がんに関する告知回答
+- `notice_answer_injury_history` - 病歴に関する告知回答
+- `height`, `weight` - 身長、体重
+
+### 3. t03_notice_detail_cancer（がん告知詳細テーブル）
+**役割:** がんに関する詳細な告知情報
+
+**構造の特徴:**
+- `sick_1`, `sick_2`, ... `sick_10` - 最大10個の病気情報を格納
+- `diagnosis_start_ym_1` - 診断開始年月（1番目）
+- `hospital_1` - 病院名（1番目）
+- `surgery_1` - 手術有無（1番目）
+
+### 4. t12_authorize_result（決済認証結果テーブル）
+**役割:** クレジットカード決済の認証結果
+
+```sql
+SELECT 't12_authorize_result' , id , application_id , merchantId , amount , ...
+```
+
+**主要カラムの説明:**
+- `merchantId` - 加盟店ID
+- `amount` - 決済金額
+- `ApprovalCode` - 承認コード
+- `ErrCode` - エラーコード
+
+### 5. t15_acctrans_result（口座振替結果テーブル）
+**特徴:** WHERE句がない
+
+```sql
+SELECT 't15_acctrans_result' , ... FROM t15_acctrans_result;
+```
+
+**理由:** 口座振替データは全期間のデータが必要なため、日付フィルタなし
+
+## SQLの基本パターン
+
+### パターン1: 基本的なSELECT文
+```sql
+SELECT カラム1, カラム2, カラム3
+FROM テーブル名
+WHERE 条件;
+```
+
+### パターン2: 文字列リテラルを含むSELECT文
+```sql
+SELECT 'テーブル名', カラム1, カラム2
+FROM テーブル名
+WHERE 条件;
+```
+→ 結果にテーブル名も含めることで、複数テーブルの結果を区別しやすくする
+
+### パターン3: 日付フィルタ
+```sql
+WHERE created_datetime > '2025-02-20'
+-- または
+WHERE created_datetime >= '2025-07-01'
+```
+
+## 初心者がよく間違えるポイント
+
+### 1. カンマの位置
+```sql
+-- ❌ 間違い
+SELECT id, name, FROM table;
+
+-- ✅ 正しい  
+SELECT id, name FROM table;
+```
+
+### 2. 文字列の引用符
+```sql
+-- ❌ 間違い
+WHERE name = name
+
+-- ✅ 正しい
+WHERE name = 'name'
+```
+
+### 3. セミコロンの忘れ
+```sql
+-- ❌ 間違い（セミコロンがない）
+SELECT * FROM table
+
+-- ✅ 正しい
+SELECT * FROM table;
+```
+
+## データベース設計の特徴
+
+### 正規化された設計
+- `t01_application`（親テーブル）
+- `t02_notice`, `t03_notice_detail_cancer`など（子テーブル）
+- `application_id`で関連付け
+
+### 繰り返し項目の格納方法
+```sql
+-- 最大15個の特約を格納
+option_type_cd_1, option_type_cd_2, ..., option_type_cd_15
+```
+
+### 日本語項目の二重管理
+```sql
+contractor_kanji_last_name,  -- 漢字姓
+contractor_last_name,        -- カナ姓  
+contractor_kana_address      -- カナ住所
+```
+
+## 実務での活用方法
+
+1. **データ抽出:** 特定期間のデータを分析
+2. **レポート作成:** 各テーブルからデータを集計
+3. **システム連携:** 他システムへのデータ出力
+4. **監査:** 申込データの整合性チェック
+
+このSQLは保険申込システムの包括的なデータ抽出クエリで、実際の保険業務で使用される典型的な構造を示しています。
